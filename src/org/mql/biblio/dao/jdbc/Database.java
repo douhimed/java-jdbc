@@ -72,6 +72,11 @@ public class Database {
 		return executeQuery(query);
 	}
 
+	public String[][] selectEqual(String tableName, String key, String value){
+		String query = "SELECT * FROM " + tableName + " WHERE " + key + " = '" + value + "'";
+		return executeQuery(query);
+	}
+	
 	public Object update(Object object) {
 		return update(object.getClass(), object);
 	}
@@ -149,40 +154,32 @@ public class Database {
 
 		Class<?> clazz = object.getClass();
 		Field[] fields = clazz.getDeclaredFields();
-		
-		/*String[][] data = new String[fields.length][2];
 
-		for (int i = 0; i < data.length; i++) {
+		StringBuilder query = new StringBuilder("INSERT INTO " + getTableName(clazz) + " VALUES(");
 
-			boolean status = fields[i].isAccessible();
-			fields[i].setAccessible(true);
-			data[i][0] = getFieldName(fields[i]);
-			try {
-				data[i][1] = fields[i].get(object).toString();
-			} catch (Exception e) {
-				System.out.println("Went bad at insert :" + e.getMessage());
+		for (Field field : fields) {
+			boolean status = field.isAccessible();
+			field.setAccessible(true);
+
+			if (isPrimaryKeyAutoIncrement(field)) {
+				try {
+					field.set(object, getMaxId(clazz) + 1);
+				} catch (Exception e) {
+					System.out
+							.println("Went bad at insert method at get next value og primary key : " + e.getMessage());
+				}
 			}
-			fields[i].setAccessible(status);
 
-		}*/
-		
-		  StringBuilder query = new StringBuilder("INSERT INTO " + getTableName(clazz)
-		  + " VALUES(");
-		  
-		  for (Field field : fields) { boolean status = field.isAccessible();
-		  field.setAccessible(true);
-		  
-		  if (isPrimaryKeyAutoIncrement(field)) { try { field.set(object,
-		  getMaxId(clazz) + 1); } catch (Exception e) { System.out.
-		  println("Went bad at insert method at get next value og primary key : " +
-		  e.getMessage()); } }
-		  
-		  try { query.append("'" + field.get(object) + "', "); } catch (Exception e) {
-		  System.out.println("Went bad at insert method : " + e.getMessage()); }
-		  
-		  field.setAccessible(status); } return updateQuery(query.substring(0,
-		  query.length() - 2) + ")");
-		 
+			try {
+				query.append("'" + field.get(object) + "', ");
+			} catch (Exception e) {
+				System.out.println("Went bad at insert method : " + e.getMessage());
+			}
+
+			field.setAccessible(status);
+		}
+		return updateQuery(query.substring(0, query.length() - 2) + ")");
+
 	}
 
 	public int getMaxId(Class clazz) {
